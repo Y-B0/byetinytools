@@ -8,7 +8,7 @@ deseq2_demo(
   exp,
   group,
   compared,
-  merge = T,
+  merge = F,
   p.name = "pvalue",
   symbol = NULL,
   fc.name = "log2FoldChange",
