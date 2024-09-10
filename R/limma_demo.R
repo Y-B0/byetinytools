@@ -6,6 +6,7 @@
 #' @param normalize if the array expression data need to normalized between different sample
 #' @param log2 if the expression data need to be convert to log2
 #' @param merge if expression data contain same gene symol, you can use it to merge them
+#' @param symbol accordance with "merge==T", specific the colum name of symbol
 #' @param rna.count used to execute rna-seq
 #' @param p.name the colname of pvalue
 #' @param fc.name the colname of fold change
@@ -17,16 +18,16 @@
 #' @export
 #'
 #' @examples
-limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,rna.count=F,p.name = "P.Value", fc.name = "logFC", p.value = 0.05, fc.value = 0.585,file.name=NULL){
+limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,rna.count=F,p.name = "P.Value", fc.name = "logFC", p.value = 0.05, fc.value = 0.585,file.name=NULL){
   library(limma)
 
   print(compared)
 
   if (merge==T) {
-    exp = aggregate(exp, by=list(rownames(exp)),mean)
+    exp = aggregate(exp, by=list(exp[,symbol]),mean)
     exp = exp[!is.na(exp$Group.1) & exp$Group.1!="",]
     rownames(exp) = exp$Group.1
-    exp<-exp[,-1]
+    exp<-exp[,!(names(exp) %in% c("Group.1",symbol))]
   }
 
   if (rna.count==T) {

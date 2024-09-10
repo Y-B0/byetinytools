@@ -4,6 +4,7 @@
 #' @param group group can be multi group, and first col is sample name; second col is condition; coef, and multi used to select multi group, keep in mind, control sample priority.
 #' @param compared compared used to identify which group vs which group (usually <conventional> - <control>). also use for multi group condition.
 #' @param merge if expression data contain same gene symol, you can use it to merge them
+#' @param symbol accordance with "merge==T", specific the colum name of symbol
 #' @param p.name the colname of pvalue
 #' @param fc.name the colname of fold change
 #' @param p.value the threshold of pvalue
@@ -14,15 +15,15 @@
 #' @export
 #'
 #' @examples
-deseq2_demo<-function(exp,group,compared,merge=T,p.name = "pvalue", fc.name = "log2FoldChange", p.value = 0.05, fc.value = 0.585,file.name=NULL){
+deseq2_demo<-function(exp, group, compared,merge=T, p.name = "pvalue", symbol=NULL, fc.name = "log2FoldChange", p.value = 0.05, fc.value = 0.585,file.name=NULL){
   library(DESeq2)
   library(stringr)
   library(magrittr)
   if (merge==T) {
-    exp = aggregate(exp, by=list(rownames(exp)),mean)
+    exp = aggregate(exp, by=list(exp[,symbol]),mean)
     exp = exp[!is.na(exp$Group.1) & exp$Group.1!="",]
     rownames(exp) = exp$Group.1
-    exp<-exp[,-1]
+    exp<-exp[,!(names(exp) %in% c("Group.1",symbol))]
   }
 
   compared<-as.vector(str_split(compared,"-",simplify = T))%>%str_trim()
