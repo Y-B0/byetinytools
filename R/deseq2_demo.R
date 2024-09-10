@@ -15,7 +15,7 @@
 #' @export
 #'
 #' @examples
-deseq2_demo<-function(exp, group, compared,merge=T, p.name = "pvalue", symbol=NULL, fc.name = "log2FoldChange", p.value = 0.05, fc.value = 0.585,file.name=NULL){
+deseq2_demo<-function(exp, group, compared,merge=F, p.name = "pvalue", symbol=NULL, fc.name = "log2FoldChange", p.value = 0.05, fc.value = 0.585,file.name=NULL){
   library(DESeq2)
   library(stringr)
   library(magrittr)

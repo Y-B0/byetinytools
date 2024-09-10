@@ -10,6 +10,7 @@ deseq2_demo(
   compared,
   merge = T,
   p.name = "pvalue",
+  symbol = NULL,
   fc.name = "log2FoldChange",
   p.value = 0.05,
   fc.value = 0.585,
@@ -26,6 +27,8 @@ deseq2_demo(
 \item{merge}{if expression data contain same gene symol, you can use it to merge them}
 
 \item{p.name}{the colname of pvalue}
+
+\item{symbol}{accordance with "merge==T", specific the colum name of symbol}
 
 \item{fc.name}{the colname of fold change}
 

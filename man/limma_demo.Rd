@@ -11,6 +11,7 @@ limma_demo(
   normalize = F,
   log2 = F,
   merge = F,
+  symbol = NULL,
   rna.count = F,
   p.name = "P.Value",
   fc.name = "logFC",
@@ -31,6 +32,8 @@ limma_demo(
 \item{log2}{if the expression data need to be convert to log2}
 
 \item{merge}{if expression data contain same gene symol, you can use it to merge them}
+
+\item{symbol}{accordance with "merge==T", specific the colum name of symbol}
 
 \item{rna.count}{used to execute rna-seq}
 

@@ -20,11 +20,11 @@ ssgsea_deom(
 
 \item{method}{method can choose from gsva or ssgsea}
 
-\item{species}{species are name in msigdbr (msigdbr)}
+\item{species}{species are name in msigdbr_species()}
 
-\item{category}{category are name in msigdbr}
+\item{category}{category are name in msigdbr_collections()}
 
-\item{subcategory}{subcategory are name in msigdbr}
+\item{subcategory}{subcategory are name in msigdbr_collections()}
 }
 \value{
 a matrix of gsea or gsve result
