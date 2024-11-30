@@ -12,7 +12,7 @@
 #' @export
 #'
 #' @examples
-volcano_demo<-function(x, p.name = "P.Value", fc.name = "logFC", p.value = 0.05, fc.value = 0.585,plot.name=NULL,gene.repel=NULL) {
+volcano_demo<-function(x, p.name = "P.Value", fc.name = "logFC", p.value = 0.05, fc.value = 0.585,plot.name=NULL,gene.repel=NULL,width=7,height=4.5) {
   library(ggplot2)
   library(ggrepel)
 
@@ -25,17 +25,19 @@ volcano_demo<-function(x, p.name = "P.Value", fc.name = "logFC", p.value = 0.05,
     scale_color_manual(name = "", values = c("#0072B5", "grey", "#BC3C28"))
 
   if (!is.null(gene.repel)) {
-    p+geom_text_repel(
-      data = subset(x, rownames(x) %in% gene.repel),
-      aes(x = fc.name, y = -1 * log10(p.name),label = rownames(x)),
+    data<- subset(x, rownames(x) %in% gene.repel)
+    p<-p+geom_text_repel(
+      aes(x = data[[fc.name]], y = -1 * log10(data[[p.name]]),label = rownames(data)),
       size = 3,
       box.padding = unit(0.5, "lines"),
-      point.padding = unit(0.5, "lines")
+      point.padding = unit(0.5, "lines"),
+      max.overlaps = Inf,
+      segment.color = "grey50"
     )
   }
 
   if (!is.null(plot.name)) {
-    ggsave(plot.name, p, "pdf", width = 7, height = 4.5)
+    ggsave(plot.name, p, "pdf", width = width, height = height)
   }
 
   return(list(data = x, plot = p))

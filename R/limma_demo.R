@@ -18,21 +18,23 @@
 #' @export
 #'
 #' @examples
-limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,rna.count=F,p.name = "P.Value", fc.name = "logFC", p.value = 0.05, fc.value = 0.585,file.name=NULL){
+limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,rna.count=F,p.name = "P.Value", fc.name = "logFC", p.value = 0.05, fc.value = 0.585,add_expr=T,file.name=NULL){
   library(limma)
+  library(edgeR)
+  library(byetinytools)
+  library(DESeq2)
 
   print(compared)
 
   if (merge==T) {
-    exp = aggregate(exp, by=list(exp[,symbol]),mean)
-    exp = exp[!is.na(exp$Group.1) & exp$Group.1!="",]
-    rownames(exp) = exp$Group.1
-    exp<-exp[,!(names(exp) %in% c("Group.1",symbol))]
+    exp<-gene_merge_demo(exp,symbol)
   }
 
   if (rna.count==T) {
-    design <- model.matrix(~0 + factor(group[, 2]))
-    exp<- voom(exp,design,normalize="quantile")$E
+    design <- model.matrix(~0 + factor(group))
+    exp <- DGEList(counts = exp, group = factor(group))
+    exp <- calcNormFactors(exp)
+    exp<- voom(exp,design)$E
   }
 
   if (normalize==T) {
@@ -42,10 +44,10 @@ limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,r
     exp<-log2(exp+1)
   }
 
-  design <- model.matrix(~0 + factor(group[, 2]))
-  colnames(design) <- unique(group[, 2])
-  rownames(design) <- group[, 1]
-  exp <- exp[, rownames(design)]
+  design <- model.matrix(~0 + factor(group))
+  colnames(design) <- gsub("factor\\(group\\)","",colnames(design))
+  rownames(design) <- colnames(exp)
+  #exp <- exp[, rownames(design)]
 
   fit <- lmFit(exp, design)
   contrast.matrix <- makeContrasts(contrasts=compared, levels = colnames(design))
@@ -58,9 +60,15 @@ limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,r
   x$sig[x[, p.name] <= p.value & x[, fc.name] >= fc.value] <- "Up"
   x$sig[x[, p.name] <= p.value & x[, fc.name] <= -fc.value] <- "Down"
 
-  if (!is.null(file.name)) {
-    write.table(data.frame(Symbol=rownames(output),x,exp),file = file.name,sep = "\t",quote = F,row.names = F,col.names = T)
+  if (add_expr) {
+    data<-cbind(x,exp)
+  }else{
+    data<-x
   }
-  return(cbind(x,exp))
+
+  if (!is.null(file.name)) {
+    write.table(data.frame(Symbol=rownames(x),x,exp),file = file.name,sep = "\t",quote = F,row.names = F,col.names = T)
+  }
+  return(data)
 
 }

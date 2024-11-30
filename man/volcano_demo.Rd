@@ -11,7 +11,9 @@ volcano_demo(
   p.value = 0.05,
   fc.value = 0.585,
   plot.name = NULL,
-  gene.repel = NULL
+  gene.repel = NULL,
+  width = 7,
+  height = 4.5
 )
 }
 \arguments{

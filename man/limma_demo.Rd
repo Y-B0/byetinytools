@@ -17,6 +17,7 @@ limma_demo(
   fc.name = "logFC",
   p.value = 0.05,
   fc.value = 0.585,
+  add_expr = T,
   file.name = NULL
 )
 }
