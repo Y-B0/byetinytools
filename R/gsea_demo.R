@@ -38,8 +38,8 @@ gsea_demo<-function(symbol,rank,geneset=NULL,go.ont="ALL",GO=TRUE,species=c("org
         keyType = "SYMBOL",
         pvalueCutoff = pvalueCutoff,
         pAdjustMethod = "BH")
-      dat<-dat@result[order(dat@result$NES),]
-      return(dat)
+      dat@result<-dat@result[order(dat@result$NES),]
+      dat
     })
   }
 
@@ -51,8 +51,8 @@ gsea_demo<-function(symbol,rank,geneset=NULL,go.ont="ALL",GO=TRUE,species=c("org
       geneList <- na.omit(geneList)
       dat<-gseKEGG(geneList,
               organism = sp,pAdjustMethod = "BH",pvalueCutoff = pvalueCutoff)
-      dat<-dat@result[order(dat@result$NES),]
-      return(dat)
+      dat@result<-dat@result[order(dat@result$NES),]
+      dat
     })
   }
 
@@ -61,8 +61,8 @@ gsea_demo<-function(symbol,rank,geneset=NULL,go.ont="ALL",GO=TRUE,species=c("org
       dat<-GSEA(geneList,
            TERM2GENE = geneset,
            pvalueCutoff = 1)
-      dat<-dat@result[order(dat@result$NES),]
-      return(dat)
+      dat@result<-dat@result[order(dat@result$NES),]
+      dat
     })
   } else {
     gse.geneset<-NULL
