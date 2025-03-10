@@ -1,7 +1,7 @@
 #' deg analysis
 #'
 #' @param exp expression data (if merge==T,exp need a colum to contain gene symbol).
-#' @param group group can be multi group, and first col is sample name; second col is condition; coef, and multi used to select multi group, keep in mind, control sample priority.
+#' @param group group is the vector which indicate the sample's group
 #' @param compared compared used to identify which group vs which group (usually <conventional> - <control>). also use for multi group condition.
 #' @param normalize if the array expression data need to normalized between different sample
 #' @param log2 if the expression data need to be convert to log2
@@ -45,7 +45,7 @@ limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,r
   }
 
   design <- model.matrix(~0 + factor(group))
-  colnames(design) <- gsub("factor\\(group\\)","",colnames(design))
+  colnames(design) <- levels(factor(group))
   rownames(design) <- colnames(exp)
   #exp <- exp[, rownames(design)]
 
@@ -61,14 +61,14 @@ limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,r
   x$sig[x[, p.name] <= p.value & x[, fc.name] <= -fc.value] <- "Down"
 
   if (add_expr) {
-    data<-cbind(x,exp)
+    x<-cbind(x,exp)
   }else{
-    data<-x
+    x<-x
   }
 
   if (!is.null(file.name)) {
     write.table(data.frame(Symbol=rownames(x),x,exp),file = file.name,sep = "\t",quote = F,row.names = F,col.names = T)
   }
-  return(data)
+  return(x)
 
 }

@@ -9,7 +9,7 @@
 #' @export
 #'
 #' @examples
-go_demo<-function(genesymbol,ntop=10,plot=T,species="org.Hs.eg.db"){
+go_demo<-function(genesymbol,ntop=10,plot=T,species=c("org.Hs.eg.db","org.Mm.eg.db"),ont="ALL",pvalueCutoff=0.05,qvalueCutoff=0.2){
   library(clusterProfiler)
   library(stringr)
   library(AnnotationDbi)
@@ -19,6 +19,8 @@ go_demo<-function(genesymbol,ntop=10,plot=T,species="org.Hs.eg.db"){
   library(ggplot2)
   library(ggrepel)
   library(ggsci)
+  library(dplyr)
+  library(magrittr)
   try({
     id_list <- mapIds(eval(parse(text=species)),genesymbol,"ENTREZID","SYMBOL")
     id_list <- na.omit(id_list)
@@ -28,18 +30,20 @@ go_demo<-function(genesymbol,ntop=10,plot=T,species="org.Hs.eg.db"){
                    keyType = "ENTREZID",
                    ont = "ALL",
                    pAdjustMethod = "BH",
-                   pvalueCutoff = 0.05,qvalueCutoff = 0.2,
-                   readable = T
+                   readable = T,pvalueCutoff=pvalueCutoff,qvalueCutoff=qvalueCutoff
     )
     go.res <- data.frame(go)
     #write.csv(go.res,"Table_GO_result.csv",quote = F)
 
 
     if (plot==T) {
-      goBP <- subset(go.res,subset = (ONTOLOGY == "BP"))[1:ntop,]
-      goCC <- subset(go.res,subset = (ONTOLOGY == "CC"))[1:ntop,]
-      goMF <- subset(go.res,subset = (ONTOLOGY == "MF"))[1:ntop,]
-      go.df <- rbind(goBP,goCC,goMF)
+      if (ont!="ALL") {
+        go.res<-go.res[go.res$ONTOLOGY%in%ont,]
+      }
+      go.df <- go.res %>%
+        group_by(ONTOLOGY) %>%
+        slice_head(n = 10) %>%
+        ungroup()
       go.df<-na.omit(go.df)
       go.df$Description <- factor(go.df$Description,levels = rev(go.df$Description))
       go_bar <- ggplot(data = go.df,

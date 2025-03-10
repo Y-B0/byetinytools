@@ -15,7 +15,7 @@
 #' @export
 #'
 #' @examples
-gsea_demo<-function(symbol,rank,geneset=NULL,go.ont="ALL",GO=TRUE,species.go="org.Hs.eg.db",KEGG=TRUE,species.kegg="hsa",n=10,pathway_ID=NULL){
+gsea_demo<-function(symbol,rank,geneset=NULL,go.ont="ALL",GO=TRUE,species=c("org.Hs.eg.db","org.Mm.eg.db"),KEGG=TRUE,n=10,pathway_ID=NULL,pvalueCutoff = 0.05){
 
   library(ggplot2)
   library(stringr)
@@ -31,42 +31,53 @@ gsea_demo<-function(symbol,rank,geneset=NULL,go.ont="ALL",GO=TRUE,species.go="or
 
   if (GO) {
     gse.GO <- try({
-      gseGO(
+      dat<-gseGO(
         geneList,
         ont = go.ont,
-        OrgDb = species.go,
+        OrgDb = species,
         keyType = "SYMBOL",
-        pvalueCutoff = 1,
+        pvalueCutoff = pvalueCutoff,
         pAdjustMethod = "BH")
+      dat<-dat@result[order(dat@result$NES),]
+      return(dat)
     })
   }
 
   if (KEGG) {
     gse.KEGG <- try({
-      gseKEGG(geneList_entrez,
-              organism = species.kegg,
-              keyType = "SYMBOL",
-              pvalueCutoff = 1)
+      sp<-ifelse(species!="org.Hs.eg.db",ifelse(species=="org.Mm.eg.db","mmu","rno"),"hsa")
+      id_list <- mapIds(eval(parse(text = species)),names(geneList),"ENTREZID","SYMBOL")%>%unlist()
+      names(geneList)<-as.character(id_list)
+      geneList <- na.omit(geneList)
+      dat<-gseKEGG(geneList,
+              organism = sp,pAdjustMethod = "BH",pvalueCutoff = pvalueCutoff)
+      dat<-dat@result[order(dat@result$NES),]
+      return(dat)
     })
   }
 
   if (!is.null(geneset)) {
     gse.geneset <- try({
-      GSEA(geneList,
+      dat<-GSEA(geneList,
            TERM2GENE = geneset,
            pvalueCutoff = 1)
+      dat<-dat@result[order(dat@result$NES),]
+      return(dat)
     })
+  } else {
+    gse.geneset<-NULL
   }
 
   if (!is.null(pathway_ID)) {
     p_go<-try({gseaplot2(gse.GO,geneSetID = pathway_ID,pvalue_table = F,base_size = 13,color = brewer.pal(10,'Paired'))})
     p_kegg<-try({gseaplot2(gse.KEGG,geneSetID = pathway_ID,pvalue_table = F,base_size = 13,color = brewer.pal(10,'Paired'))})
-    p_geneset<-try({gseaplot2(gse.KEGG,geneSetID = pathway_ID,pvalue_table = F,base_size = 13,color = brewer.pal(10,'Paired'))})
+    p_geneset<-try({gseaplot2(gse.geneset,geneSetID = pathway_ID,pvalue_table = F,base_size = 13,color = brewer.pal(10,'Paired'))})
   } else {
     p_go<-try({gseaplot2(gse.GO,geneSetID = 1:n,pvalue_table = F,base_size = 13,color = brewer.pal(10,'Paired'))})
     p_kegg<-try({gseaplot2(gse.KEGG,geneSetID = 1:n,pvalue_table = F,base_size = 13,color = brewer.pal(10,'Paired'))})
-    p_geneset<-try({gseaplot2(gse.KEGG,geneSetID = 1:n,pvalue_table = F,base_size = 13,color = brewer.pal(10,'Paired'))})
+    p_geneset<-try({gseaplot2(gse.geneset,geneSetID = 1:n,pvalue_table = F,base_size = 13,color = brewer.pal(10,'Paired'))})
   }
 
   try(return(list(gse.GO=gse.GO,gse.KEGG=gse.KEGG,gse.geneset=gse.geneset,p_go=p_go,p_kegg=p_kegg,p_geneset=p_geneset)))
+
 }

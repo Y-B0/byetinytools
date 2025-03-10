@@ -10,11 +10,11 @@ gsea_demo(
   geneset = NULL,
   go.ont = "ALL",
   GO = TRUE,
-  species.go = "org.Hs.eg.db",
+  species = c("org.Hs.eg.db", "org.Mm.eg.db"),
   KEGG = TRUE,
-  species.kegg = "hsa",
   n = 10,
-  pathway_ID = NULL
+  pathway_ID = NULL,
+  pvalueCutoff = 0.05
 )
 }
 \arguments{
@@ -28,15 +28,15 @@ gsea_demo(
 
 \item{GO}{whether need go gene set}
 
-\item{species.go}{specify the specie}
-
 \item{KEGG}{whether need kegg gene set}
-
-\item{species.kegg}{specify the specie}
 
 \item{n}{how many pathway need to be plot}
 
 \item{pathway_ID}{specify some interest geneset}
+
+\item{species.go}{specify the specie}
+
+\item{species.kegg}{specify the specie}
 }
 \description{
 Title

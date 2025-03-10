@@ -24,7 +24,7 @@ limma_demo(
 \arguments{
 \item{exp}{expression data (if merge==T,exp need a colum to contain gene symbol).}
 
-\item{group}{group can be multi group, and first col is sample name; second col is condition; coef, and multi used to select multi group, keep in mind, control sample priority.}
+\item{group}{group is the vector which indicate the sample's group}
 
 \item{compared}{compared used to identify which group vs which group (usually <conventional> - <control>). also use for multi group condition.}
 

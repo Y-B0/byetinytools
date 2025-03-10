@@ -4,7 +4,14 @@
 \alias{kegg_demo}
 \title{kegg analysis}
 \usage{
-kegg_demo(genesymbol, ntop = 10, plot = T, species = "org.Hs.eg.db")
+kegg_demo(
+  genesymbol,
+  ntop = 10,
+  plot = T,
+  species = c("org.Hs.eg.db", "org.Mm.eg.db", "org.Rn.eg.db"),
+  pvalueCutoff = 0.05,
+  qvalueCutoff = 0.2
+)
 }
 \arguments{
 \item{genesymbol}{the enrichment gene list}

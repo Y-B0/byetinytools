@@ -4,7 +4,15 @@
 \alias{go_demo}
 \title{go analysis}
 \usage{
-go_demo(genesymbol, ntop = 10, plot = T, species = "org.Hs.eg.db")
+go_demo(
+  genesymbol,
+  ntop = 10,
+  plot = T,
+  species = c("org.Hs.eg.db", "org.Mm.eg.db"),
+  ont = "ALL",
+  pvalueCutoff = 0.05,
+  qvalueCutoff = 0.2
+)
 }
 \arguments{
 \item{genesymbol}{the enrichment gene list}

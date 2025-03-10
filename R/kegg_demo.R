@@ -11,12 +11,13 @@
 #' @export
 #'
 #' @examples
-kegg_demo<-function(genesymbol,ntop=10,plot=T,species="org.Hs.eg.db"){
+kegg_demo<-function(genesymbol,ntop=10,plot=T,species=c("org.Hs.eg.db","org.Mm.eg.db","org.Rn.eg.db"),pvalueCutoff=0.05,qvalueCutoff=0.2){
   library(clusterProfiler)
   library(stringr)
   library(AnnotationDbi)
   library(org.Hs.eg.db)
   library(org.Mm.eg.db)
+  library(org.Rn.eg.db)
   library(DOSE)
   library(ggplot2)
   library(ggrepel)
@@ -28,7 +29,7 @@ kegg_demo<-function(genesymbol,ntop=10,plot=T,species="org.Hs.eg.db"){
     id_list <- mapIds(eval(parse(text = species)),genesymbol,"ENTREZID","SYMBOL")
     id_list <- na.omit(id_list)
 
-    kegg <- enrichKEGG(id_list, keyType = 'kegg', pvalueCutoff = 0.05, pAdjustMethod = "BH",
+    kegg <- enrichKEGG(id_list, keyType = 'kegg', pAdjustMethod = "BH",pvalueCutoff=pvalueCutoff,qvalueCutoff=qvalueCutoff,
                        minGSSize = 5, maxGSSize = 500, organism = sp, use_internal_data = FALSE)
     kegg<-DOSE::setReadable(kegg, OrgDb=species, keyType = 'ENTREZID')
 

@@ -14,13 +14,14 @@ deseq2_demo(
   fc.name = "log2FoldChange",
   p.value = 0.05,
   fc.value = 0.585,
+  add_expr = T,
   file.name = NULL
 )
 }
 \arguments{
 \item{exp}{expression data (if merge==T,exp need a colum to contain gene symbol).}
 
-\item{group}{group can be multi group, and first col is sample name; second col is condition; coef, and multi used to select multi group, keep in mind, control sample priority.}
+\item{group}{group is the vector which indicate the sample's group}
 
 \item{compared}{compared used to identify which group vs which group (usually <conventional> - <control>). also use for multi group condition.}
 
@@ -36,7 +37,7 @@ deseq2_demo(
 
 \item{fc.value}{the threshold of fold change}
 
-\item{file.name}{if need to write a txt file to save the deg result, you can assign a file name}
+\item{file.name}{if need to write a tdata:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAbElEQVR4Xs2RQQrAMAgEfZgf7W9LAguybljJpR3wEse5JOL3ZObDb4x1loDhHbBOFU6i2Ddnw2KNiXcdAXygJlwE8OFVBHDgKrLgSInN4WMe9iXiqIVsTMjH7z/GhNTEibOxQswcYIWYOR/zAjBJfiXh3jZ6AAAAAElFTkSuQmCCxt file to save the deg result, you can assign a file name}
 }
 \description{
 Title
