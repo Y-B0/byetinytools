@@ -18,7 +18,7 @@
 #' @export
 #'
 #' @examples
-limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,rna.count=F,p.name = "P.Value", fc.name = "logFC", p.value = 0.05, fc.value = 0.585,add_expr=T,file.name=NULL){
+limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,curve=T,rna.count=F,p.name = "P.Value", fc.name = "logFC", p.value = 0.05, fc.value = 0.585,add_expr=T,file.name=NULL){
   library(limma)
   library(edgeR)
   library(byetinytools)
@@ -55,10 +55,27 @@ limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,r
   fit2 <- contrasts.fit(fit, contrast.matrix)
   fit2 <- eBayes(fit2)
   x <- topTable(fit2, coef = compared, n = Inf, sort.by = "none")
+  x$negLog10P<-(-log10(x[[p.name]]))
 
   x$sig[(x[, p.name] > p.value | x[, p.name] == "NA") | (x[, fc.name] < fc.value) & x[, fc.name] > -fc.value] <- "Stable"
   x$sig[x[, p.name] <= p.value & x[, fc.name] >= fc.value] <- "Up"
   x$sig[x[, p.name] <= p.value & x[, fc.name] <= -fc.value] <- "Down"
+
+  if (curve==T) {
+    x <- x %>%
+      mutate(
+      curve_y = if_else(
+        (!!sym(fc.name)) > 0,
+        1 / ((!!sym(fc.name)) - fc.value) - log10(p.value),
+        1 / (-(!!sym(fc.name)) - fc.value) - log10(p.value)
+      ),
+      sig = case_when(
+        negLog10P > curve_y & (!!sym(fc.name)) >= fc.value ~ "Up",
+        negLog10P > curve_y & (!!sym(fc.name)) <= -fc.value ~ "Down",
+        TRUE ~ "Stable"
+      )
+    )
+  }
 
   if (add_expr) {
     x<-cbind(x,exp)

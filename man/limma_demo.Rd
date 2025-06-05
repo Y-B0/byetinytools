@@ -12,6 +12,7 @@ limma_demo(
   log2 = F,
   merge = F,
   symbol = NULL,
+  curve = T,
   rna.count = F,
   p.name = "P.Value",
   fc.name = "logFC",

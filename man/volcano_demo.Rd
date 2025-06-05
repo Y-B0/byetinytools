@@ -8,6 +8,7 @@ volcano_demo(
   x,
   p.name = "P.Value",
   fc.name = "logFC",
+  curve = T,
   p.value = 0.05,
   fc.value = 0.585,
   plot.name = NULL,
