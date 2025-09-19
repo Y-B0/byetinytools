@@ -10,6 +10,7 @@ chea3_demo<-function(genes){
 
   library(httr)
   library(jsonlite)
+  library(tidyr)
 
   url = "https://maayanlab.cloud/chea3/api/enrich/"
   encode = "json"

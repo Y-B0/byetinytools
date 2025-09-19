@@ -21,7 +21,7 @@ scrna_step<-function(){
     ##default the input path contain multi sample folder, each sample folder have named accordant with sample info file, every sample folder contain the three basic files,
 
     if (h5==T) {
-      dir_name <<- list.files(path,pattern = "*.h5",recursive = T,full.names = F)
+      dir_name <<- list.files(path,pattern = "*.h5*",recursive = T,full.names = F)
     }else{
       dir_name <<- list.dirs(path,recursive = F)
     }
@@ -142,7 +142,7 @@ scrna_step<-function(){
 
   #SCT normlize
   sct_data_s6<-function(scRNAdata,copy2RNA=T,all.gene=TRUE,Rfile=NULL,node=10,...){
-    options(future.globals.maxSize = node * 1024^2)
+    options(future.globals.maxSize = Inf)
     sct_data <- SCTransform(scRNAdata,method = "glmGamPoi",return.only.var.genes=!all.gene,vars.to.regress = c('MT_percent',"HB_percent"),...)
     sct_data <- PrepSCTFindMarkers(sct_data)
     if (copy2RNA==T) {
@@ -157,6 +157,23 @@ scrna_step<-function(){
 
     return(sct_data)
   }
+
+  sct_data_new_s6<-function(scRNAdata,all.gene=TRUE,Rfile=NULL,node=10,nfeatures=3000,...){
+    options(future.globals.maxSize = Inf)
+    sct_data<-lapply(scRNAdata,SCTransform,method = "glmGamPoi",return.only.var.genes=!all.gene,vars.to.regress = c('MT_percent',"HB_percent"),...)
+    features <- SelectIntegrationFeatures(sct_data, nfeatures = nfeatures)
+    sct_data <- PrepSCTIntegration(sct_data, anchor.features = features)
+    anchors <- FindIntegrationAnchors(object.list = sct_data, normalization.method = "SCT",
+                                      anchor.features = features)
+    sct_data <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
+    if (!is.null(Rfile)) {
+      saveRDS(sct_data,file = Rfile)
+    }
+    print("normlization complete")
+
+    return(sct_data)
+  }
+
 
   norm_data_s6<-function(scRNAdata,vars.to.regress=c('MT_percent',"HB_percent"),Rfile=NULL){
 
@@ -293,6 +310,6 @@ scrna_step<-function(){
 
 
   return(list(env_load_s1=env_load_s1,file_read_s2=file_read_s2,feature_show_s3=feature_show_s3,cell_filter_s4=cell_filter_s4,merge_data_s5=merge_data_s5,
-              sct_data_s6=sct_data_s6,norm_data_s6=norm_data_s6,pca_reduction_s7=pca_reduction_s7,batch_rm_s8=batch_rm_s8,umap_reduction_s9=umap_reduction_s9,clust_plot_s10=clust_plot_s10,
+              sct_data_s6=sct_data_s6,norm_data_s6=norm_data_s6,sct_data_new_s6=sct_data_new_s6,pca_reduction_s7=pca_reduction_s7,batch_rm_s8=batch_rm_s8,umap_reduction_s9=umap_reduction_s9,clust_plot_s10=clust_plot_s10,
               marker_find_s11=marker_find_s11,cluster_anno_s12=cluster_anno_s12))
 }

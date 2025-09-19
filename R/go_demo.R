@@ -9,7 +9,7 @@
 #' @export
 #'
 #' @examples
-go_demo<-function(genesymbol,ntop=10,plot=T,species=c("org.Hs.eg.db","org.Mm.eg.db"),ont="ALL",pvalueCutoff=0.05,qvalueCutoff=0.2){
+go_demo<-function(genesymbol,ntop=10,plot=T,plot.name=NULL,file.name=NULL,plot.width=7,plot.height=7,species=c("org.Hs.eg.db","org.Mm.eg.db"),ont="ALL",pvalueCutoff=0.05,qvalueCutoff=0.2,keytype="SYMBOL"){
   library(clusterProfiler)
   library(stringr)
   library(AnnotationDbi)
@@ -21,19 +21,18 @@ go_demo<-function(genesymbol,ntop=10,plot=T,species=c("org.Hs.eg.db","org.Mm.eg.
   library(ggsci)
   library(dplyr)
   library(magrittr)
+  library(enrichplot)
   try({
-    id_list <- mapIds(eval(parse(text=species)),genesymbol,"ENTREZID","SYMBOL")
-    id_list <- na.omit(id_list)
-
-    go <- enrichGO(gene = id_list,
+    go <- enrichGO(gene = genesymbol,
                    OrgDb = eval(parse(text=species)),
-                   keyType = "ENTREZID",
+                   keyType = keytype,
                    ont = "ALL",
                    pAdjustMethod = "BH",
-                   readable = T,pvalueCutoff=pvalueCutoff,qvalueCutoff=qvalueCutoff
-    )
+                   readable = T,pvalueCutoff=pvalueCutoff,qvalueCutoff=qvalueCutoff)%>%pairwise_termsim()%>%simplify()
     go.res <- data.frame(go)
-    #write.csv(go.res,"Table_GO_result.csv",quote = F)
+    if (!is.null(file.name)) {
+      write.table(go.res,,file = file.name,sep = "\t",quote = F,row.names = F,col.names = T)
+    }
 
 
     if (plot==T) {
@@ -55,7 +54,9 @@ go_demo<-function(genesymbol,ntop=10,plot=T,species=c("org.Hs.eg.db","org.Mm.eg.
         theme(text=element_text(size=18), axis.text.y = element_text(size = 10),
               plot.title = element_text(size = 14,hjust = 0.5,face = "bold"),
               plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm"))+scale_fill_aaas()
-      #ggsave(go_bar,filename = "GO_Barplot.pdf",width = 9,height = 7)
+      if (!is.null(plot.name)) {
+        ggsave(go_bar,filename = plot.name,width = plot.width,height = plot.height)
+      }
     }
     return(list(go=go,plot=go_bar))
   })

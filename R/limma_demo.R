@@ -23,7 +23,7 @@ limma_demo<-function(exp,group,compared,normalize=F,log2=F,merge=F,symbol=NULL,c
   library(edgeR)
   library(byetinytools)
   library(DESeq2)
-
+  library(dplyr)
   print(compared)
 
   if (merge==T) {

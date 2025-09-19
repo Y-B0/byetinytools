@@ -60,7 +60,7 @@ gsea_demo<-function(symbol,rank,geneset=NULL,go.ont="ALL",GO=TRUE,species=c("org
     gse.geneset <- try({
       dat<-GSEA(geneList,
            TERM2GENE = geneset,
-           pvalueCutoff = 1)
+           pvalueCutoff = 1)%>%pairwise_termsim()%>%simplify()
       dat@result<-dat@result[order(dat@result$NES),]
       dat
     })

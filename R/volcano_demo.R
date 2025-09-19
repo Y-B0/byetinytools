@@ -19,7 +19,7 @@ volcano_demo<-function(x, p.name = "P.Value", fc.name = "logFC",curve=T, p.value
 
   p <- ggplot() +
     theme_bw() +
-    xlim(-10, 10) + ylim(0,50) +
+    xlim(-10, 10) + ylim(0, max(-log10(x[[p.name]]), na.rm = TRUE) * 1.2) +
     geom_point(aes(x = x[, fc.name], y = -1 * log10(x[, p.name]), color = x$sig),alpha=0.8) +
     theme(text = element_text(size = 20)) +
     labs(x = "log2(FoldChange)", y = paste("-log10(", p.name, ")", sep = "")) +
@@ -39,7 +39,7 @@ volcano_demo<-function(x, p.name = "P.Value", fc.name = "logFC",curve=T, p.value
     curve_data <- build_curve_data(10, fc.value, p.value)
     p <- ggplot() +
       theme_bw() +
-      xlim(-10, 10) + ylim(0,50) +
+      xlim(-10, 10) + ylim(0, max(-log10(x[[p.name]]), na.rm = TRUE) * 1.2) +
       geom_point(aes(x = x[, fc.name], y = -1 * log10(x[, p.name]), color = x$sig),alpha=0.8) +
       theme(text = element_text(size = 20)) +
       labs(x = "log2(FoldChange)", y = paste("-log10(", p.name, ")", sep = "")) +
