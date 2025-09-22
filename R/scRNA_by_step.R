@@ -286,7 +286,9 @@ scrna_step<-function(){
       anno_data <- scMayoMap(data = de_data, database = databse,...)
     }
 
-    tmp<-group_by(anno_data$markers,cluster)%>%arrange(desc(score),.by_group = T)%>%slice_head(.,n=1)
+    tmp<-anno_data$markers %>%
+      group_by(cluster) %>%
+      slice_max(order_by = score, n = 1)
     markers<-tmp
     markers$gene<-str_split(tmp$genes,",")
     markers$cluster<-as.numeric(markers$cluster)
