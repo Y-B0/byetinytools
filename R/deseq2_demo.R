@@ -40,7 +40,7 @@ deseq2_demo<-function(exp, group, compared,merge=F, p.name = "pvalue", symbol=NU
   x$sig[x[, p.name] <= p.value & x[, fc.name] <= -fc.value] <- "Down"
 
   if (add_expr) {
-    x<-cbind(x,exp)
+    x<-cbind(x,count)
   }else{
     x<-x
   }
