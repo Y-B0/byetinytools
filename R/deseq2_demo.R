@@ -15,7 +15,7 @@
 #' @export
 #'
 #' @examples
-deseq2_demo<-function(exp, group, compared,merge=F, p.name = "pvalue", symbol=NULL, fc.name = "log2FoldChange", p.value = 0.05, fc.value = 0.585,add_expr=T,file.name=NULL){
+deseq2_demo<-function(exp, group, compared,merge=F,lfcShrink=F, p.name = "pvalue", symbol=NULL, fc.name = "log2FoldChange", p.value = 0.05, fc.value = 0.585,add_expr=T,file.name=NULL){
   library(DESeq2)
   library(stringr)
   library(magrittr)
@@ -30,8 +30,15 @@ deseq2_demo<-function(exp, group, compared,merge=F, p.name = "pvalue", symbol=NU
 
   dds <- DESeqDataSetFromMatrix(exp, data.frame(group), design= ~ group )
   dds <- DESeq(dds)
-  #x <- results(dds,contrast = c("group",compared[[1]],compared[[2]]))%>%as.data.frame()
-  x<-lfcShrink(dds = dds,coef = resultsNames(dds)[2],type = "apeglm")
+  if (lfcShrink == TRUE) {
+    x <- lfcShrink(dds = dds,
+                   coef = resultsNames(dds)[2],
+                   type = "apeglm")
+  } else {
+    x <- results(dds,
+                 contrast = c("group", compared[[1]], compared[[2]]))
+  }
+  #x<-
   count<-counts(dds,normalized=T)
   x<-as.data.frame(x)
   x$sig[(x[, p.name] > p.value | x[, p.name] == "NA") | (x[, fc.name] < fc.value) & x[, fc.name] > -fc.value] <- "Stable"
