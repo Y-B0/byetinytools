@@ -38,7 +38,6 @@ deseq2_demo<-function(exp, group, compared,merge=F,lfcShrink=F, p.name = "pvalue
     x <- results(dds,
                  contrast = c("group", compared[[1]], compared[[2]]))
   }
-  #x<-
   count<-counts(dds,normalized=T)
   x<-as.data.frame(x)
   x$sig[(x[, p.name] > p.value | x[, p.name] == "NA") | (x[, fc.name] < fc.value) & x[, fc.name] > -fc.value] <- "Stable"
