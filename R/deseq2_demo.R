@@ -32,9 +32,10 @@ deseq2_demo<-function(exp, group, compared,merge=F, p.name = "pvalue", symbol=NU
   dds <- estimateSizeFactors(dds)
   dds <- estimateDispersions(dds)
   dds <- DESeq(dds)
-  x <- results(dds,contrast = c("group",compared[[1]],compared[[2]]))%>%as.data.frame()
+  #x <- results(dds,contrast = c("group",compared[[1]],compared[[2]]))%>%as.data.frame()
+  x<-lfcShrink(dds = dds,contrast = c("group",compared[[1]],compared[[2]]),type = "apeglm")
   count<-counts(dds,normalized=T)
-
+  x<-as.data.frame(x)
   x$sig[(x[, p.name] > p.value | x[, p.name] == "NA") | (x[, fc.name] < fc.value) & x[, fc.name] > -fc.value] <- "Stable"
   x$sig[x[, p.name] <= p.value & x[, fc.name] >= fc.value] <- "Up"
   x$sig[x[, p.name] <= p.value & x[, fc.name] <= -fc.value] <- "Down"
