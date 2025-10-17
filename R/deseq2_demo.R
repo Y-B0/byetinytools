@@ -49,7 +49,7 @@ deseq2_demo<-function(exp, group, compared,merge=F,lfcShrink=F, p.name = "pvalue
   }else{
     x<-x
   }
-
+  x<-x[order(x$log2FoldChange),]
   if (!is.null(file.name)) {
     write.table(data.frame(Symbol=rownames(x),x,exp),file = file.name,sep = "\t",quote = F,row.names = F,col.names = T)
   }
