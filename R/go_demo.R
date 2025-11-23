@@ -28,7 +28,7 @@ go_demo<-function(genesymbol,ntop=10,plot=T,plot.name=NULL,file.name=NULL,plot.w
                    keyType = keytype,
                    ont = "ALL",
                    pAdjustMethod = "BH",
-                   readable = T,pvalueCutoff=pvalueCutoff,qvalueCutoff=qvalueCutoff)%>%pairwise_termsim()
+                   readable = T,pvalueCutoff=pvalueCutoff,qvalueCutoff=qvalueCutoff)
     go.res <- data.frame(go)
     if (!is.null(file.name)) {
       write.table(go.res,,file = file.name,sep = "\t",quote = F,row.names = F,col.names = T)
