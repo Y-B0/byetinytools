@@ -161,7 +161,7 @@ scrna_step<-function(){
 
   sct_data_new_s6<-function(scRNAdata,all.gene=TRUE,Rfile=NULL,node=10,nfeatures=3000,reduction="cca",...){
     options(future.globals.maxSize = Inf)
-    sct_data<-future_apply(scRNAdata,SCTransform,method = "glmGamPoi",return.only.var.genes=!all.gene,vars.to.regress = c('MT_percent',"HB_percent"),...)
+    sct_data<-future_lapply(scRNAdata,SCTransform,method = "glmGamPoi",return.only.var.genes=!all.gene,vars.to.regress = c('MT_percent',"HB_percent"),...)
     features <- SelectIntegrationFeatures(sct_data, nfeatures = nfeatures)
     sct_data <- PrepSCTIntegration(sct_data, anchor.features = features)
     anchors <- FindIntegrationAnchors(object.list = sct_data, normalization.method = "SCT",
