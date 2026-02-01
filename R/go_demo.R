@@ -50,10 +50,10 @@ go_demo<-function(genesymbol,ntop=10,plot=T,plot.name=NULL,file.name=NULL,plot.w
         geom_bar(stat = "identity",width = 0.9)+
         coord_flip()+theme_bw()+
         scale_x_discrete(labels = function(x) str_wrap(x,width = 50))+
-        labs(x = "GO terms",y = "GeneNumber",title = "Barplot of Enriched GO Terms")+
-        theme(text=element_text(size=18), axis.text.y = element_text(size = 10),
+        labs(x = "",y = "",title = "")+
+        theme(text=element_text(size=16), axis.text.y = element_text(size = 10),
               plot.title = element_text(size = 14,hjust = 0.5,face = "bold"),
-              plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm"))+scale_fill_aaas()
+              plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm"),legend.position = "none")+scale_fill_aaas()
       if (!is.null(plot.name)) {
         ggsave(go_bar,filename = plot.name,width = plot.width,height = plot.height)
       }
