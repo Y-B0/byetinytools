@@ -14,6 +14,7 @@ scrna_step<-function(){
     library(starTracer)
     library(dplyr)
     library(future.apply)
+    library(recall)
   }
 
   #file read in
@@ -159,11 +160,18 @@ scrna_step<-function(){
     return(sct_data)
   }
 
-  sct_data_new_s6<-function(scRNAdata,all.gene=TRUE,Rfile=NULL,node=10,nfeatures=3000,reduction="cca",...){
-    options(future.globals.maxSize = Inf)
-    sct_data<-future_lapply(scRNAdata,SCTransform,method = "glmGamPoi",return.only.var.genes=!all.gene,vars.to.regress = c('MT_percent',"HB_percent"),...)
+  sct_data_new_s6<-function(scRNAdata,all.gene=FALSE,Rfile=NULL,nfeatures=3000,reduction="rpca",workers = 3,future.seed=T,npcs=20,...){
+    plan(multisession, workers = workers)
+    options(future.globals.maxSize = 90 * 1024^3)
+    future.seed=future.seed
+    sct_data<-future_lapply(scRNAdata,SCTransform,method = "glmGamPoi",return.only.var.genes=!all.gene,vars.to.regress = c('MT_percent',"HB_percent"),
+                            conserve.memory = TRUE,...)
+    plan(sequential);future:::ClusterRegistry("stop")
     features <- SelectIntegrationFeatures(sct_data, nfeatures = nfeatures)
     sct_data <- PrepSCTIntegration(sct_data, anchor.features = features)
+    if (reduction == "rpca") {
+      sct_data <- lapply(sct_data, RunPCA, features = features, verbose = FALSE, npcs = npcs)
+    }
     anchors <- FindIntegrationAnchors(object.list = sct_data, normalization.method = "SCT",
                                       anchor.features = features,reduction = reduction)
     sct_data <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
@@ -221,23 +229,39 @@ scrna_step<-function(){
   }
 
   #reduction
-  umap_reduction_s9<-function(scRNAdata,n.dims=20,resolution=seq(0,1,0.1),assay="SCT",reduction=c("pca","harmony"),Rfile=NULL,...){
-
+  umap_reduction_s9<-function(scRNAdata,n.dims=20,assay="SCT",reduction=c("pca","harmony"),n.neighbors = 30L,n.components = 3L,Rfile=NULL,...){
+    #if resolution_start length >1 then use old method to clustree, otherwise use findclustersrecall
+    DefaultAssay(scRNAdata) <- "integrated"
     scRNAdata <- FindNeighbors(scRNAdata,reduction = reduction,dims = 1:n.dims)
-    scRNAdata <- FindClusters(scRNAdata,resolution = resolution)
-    scRNAdata <- RunUMAP(scRNAdata,dims = 1:n.dims,reduction = reduction,...)
-    scRNAdata <- RunTSNE(scRNAdata,dims = 1:n.dims,reduction = reduction,...)
+    scRNAdata <- RunUMAP(scRNAdata,dims = 1:n.dims,reduction = reduction,n.neighbors=n.neighbors,n.components=n.components,...)
+    scRNAdata <- RunTSNE(scRNAdata,dims = 1:n.dims,reduction = reduction,n.neighbors=n.neighbors,n.components=n.components,...)
     print("Reduction complete")
+
+    if (!is.null(Rfile)) {
+      saveRDS(scRNAdata,file = Rfile)
+    }
+
+    return(scRNAdata)
+  }
+
+  umap_cluster_s10<-function(scRNAdata,n.dims=20,resolution,clustermethod=c("normal","recall"),assay="SCT",reduction=c("pca","harmony"),Rfile=NULL,algorithm = "louvain",core=4,...){
+    #if resolution_start length >1 then use old method to clustree, otherwise use findclustersrecall
     print(paste("dims: ",n.dims))
     print(paste("resolution: ",resolution))
 
-    reduct_data<-scRNAdata
+    if (clustermethod=="normal") {
+      reduct_data <- FindClusters(scRNAdata,resolution = resolution)
+      if (length(resolution)>1) {
+        clustree(reduct_data)
+      }
+    } else if (clustermethod=="recall"){
+      reduct_data <- FindClustersRecall(scRNAdata,dims = 1:ndims,resolution_start = resolution,algorithm = "louvain",assay = "SCT",cores=core)
+    }
+
     if (!is.null(Rfile)) {
       saveRDS(reduct_data,file = Rfile)
     }
-    if (length(resolution)>1) {
-      clustree(reduct_data)
-    }
+
     return(reduct_data)
   }
 
@@ -247,22 +271,20 @@ scrna_step<-function(){
     umap_integrated_2 <- DimPlot(scRNAdata,reduction = 'tsne', label = T,...)
     umap_integrated_3 <- DimPlot(scRNAdata,reduction = 'umap', label = T,...)
     umap_integrated_4 <- DimPlot(scRNAdata,reduction = 'pca', label = T,...)
-    integrated_plot <- umap_integrated_1+umap_integrated_2+umap_integrated_3
+    integrated_plot <- list(batch_check=umap_integrated_1,pca=umap_integrated_4,tsne=umap_integrated_2,umap=umap_integrated_3)
     return(integrated_plot)
   }
 
   #find markers
-  marker_find_s11<-function(scRNAdata,node=4,only.pos = T,assay = "SCT",slot="scale.data",test.use = "wilcox",Rfile=NULL,multcore=F,...){
+  marker_find_s11<-function(scRNAdata,node=4,only.pos = T,assay = "SCT",slot="scale.data",test.use = "wilcox",Rfile=NULL,...){
 
-    if (multcore==T) {
+    if (node>1) {
       options(future.globals.maxSize = node * 1024^2)
       plan("multisession", workers = node)
-    }
-
-    all.markers <- FindAllMarkers(scRNAdata,...)
-
-    if (multcore==T) {
+      all.markers <- FindAllMarkers(scRNAdata,...)
       plan("sequential")
+    } else {
+      all.markers <- FindAllMarkers(scRNAdata,only.pos = only.pos,assay = assay,slot=slot,test.use = test.use,...)
     }
     gc()
     if (!is.null(Rfile)) {
@@ -270,7 +292,6 @@ scrna_step<-function(){
     }
     print("Find marker complete")
     return(all.markers)
-
   }
 
   #cluster annotation
@@ -313,6 +334,6 @@ scrna_step<-function(){
 
 
   return(list(env_load_s1=env_load_s1,file_read_s2=file_read_s2,feature_show_s3=feature_show_s3,cell_filter_s4=cell_filter_s4,merge_data_s5=merge_data_s5,
-              sct_data_s6=sct_data_s6,norm_data_s6=norm_data_s6,sct_data_new_s6=sct_data_new_s6,pca_reduction_s7=pca_reduction_s7,batch_rm_s8=batch_rm_s8,umap_reduction_s9=umap_reduction_s9,clust_plot_s10=clust_plot_s10,
+              sct_data_s6=sct_data_s6,norm_data_s6=norm_data_s6,sct_data_new_s6=sct_data_new_s6,pca_reduction_s7=pca_reduction_s7,batch_rm_s8=batch_rm_s8,umap_reduction_s9=umap_reduction_s9,umap_cluster_s10=umap_cluster_s10,clust_plot_s10=clust_plot_s10,
               marker_find_s11=marker_find_s11,cluster_anno_s12=cluster_anno_s12))
 }
