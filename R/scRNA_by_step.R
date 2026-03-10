@@ -143,30 +143,49 @@ scrna_step<-function(){
   }
 
   #SCT normlize
-  sct_data_s6<-function(scRNAdata,copy2RNA=T,all.gene=TRUE,Rfile=NULL,node=10,...){
-    options(future.globals.maxSize = Inf)
-    sct_data <- SCTransform(scRNAdata,method = "glmGamPoi",return.only.var.genes=!all.gene,vars.to.regress = c('MT_percent',"HB_percent"),...)
-    sct_data <- PrepSCTFindMarkers(sct_data)
-    if (copy2RNA==T) {
-      sct_data[['RNA']] <- JoinLayers(sct_data[['RNA']])
-      sct_data@assays$RNA$data<-sct_data@assays$SCT$data
-      sct_data@assays$RNA$scale.data<-sct_data@assays$SCT$scale.data
-    }
+  sct_data_s6<-function(scRNAdata, all.gene = FALSE, Rfile = NULL, nfeatures = 3000,
+                        reduction = "rpca", future.seed = T, npcs = 50, k.weight = 100,...){
+    sct_data<-mclapply(filter_data, function(x){
+      SCTransform(
+        x,
+        method = "glmGamPoi",
+        return.only.var.genes = T,
+        vars.to.regress = c("MT_percent","HB_percent"),
+        conserve.memory = TRUE
+      )
+    })
+    gc()
+
+    sct_data <- merge(sct_data[[1]], y = sct_data[-1])
+    sct_data <- FindVariableFeatures(sct_data, selection.method = "vst", nfeatures = nfeatures)
+    gc()
+
+    sct_data <- RunPCA(sct_data, npcs = npcs)
+    gc()
+
+    sct_data <- RunHarmony(sct_data,group.by.vars = "orig.ident")
+    gc()
     if (!is.null(Rfile)) {
-      saveRDS(sct_data,file = Rfile)
+      saveRDS(sct_data, file = Rfile)
     }
     print("normlization complete")
-
     return(sct_data)
   }
 
   sct_data_new_s6<-function(scRNAdata,all.gene=FALSE,Rfile=NULL,nfeatures=3000,reduction="rpca",workers = 3,future.seed=T,npcs=20,...){
     plan(multisession, workers = workers)
     options(future.globals.maxSize = 90 * 1024^3)
-    future.seed=future.seed
-    sct_data<-future_lapply(scRNAdata,SCTransform,method = "glmGamPoi",return.only.var.genes=!all.gene,vars.to.regress = c('MT_percent',"HB_percent"),
-                            conserve.memory = TRUE,...)
-    plan(sequential);future:::ClusterRegistry("stop")
+
+    sct_data <- list()
+    for(i in seq_along(scRNAdata)) {
+      sct_data[[i]] <- SCTransform(scRNAdata[[i]],
+                                   method = "glmGamPoi",
+                                   return.only.var.genes = !all.gene,
+                                   vars.to.regress = c("MT_percent","HB_percent"),
+                                   conserve.memory = TRUE,...)
+    }
+
+    gc()
     features <- SelectIntegrationFeatures(sct_data, nfeatures = nfeatures)
     sct_data <- PrepSCTIntegration(sct_data, anchor.features = features)
     if (reduction == "rpca") {
