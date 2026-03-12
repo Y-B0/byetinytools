@@ -15,6 +15,7 @@ scrna_step<-function(){
     library(dplyr)
     library(future.apply)
     library(recall)
+    library(parallel)
   }
 
   #file read in
@@ -142,9 +143,9 @@ scrna_step<-function(){
     return(merged_data)
   }
 
-  #SCT normlize
-  sct_data_s6<-function(scRNAdata, all.gene = FALSE, Rfile = NULL, nfeatures = 3000,
-                        reduction = "rpca", future.seed = T, npcs = 50, k.weight = 100,...){
+  #SCT normlizeation and intergrate and batch remove
+  sct_data_s6<-function(scRNAdata, all.gene = FALSE,cores=1 , Rfile = NULL, nfeatures = 3000,
+                        reduction = c("cca", "rpca", "jpca", "rlsi"), future.seed = T, k.weight = 100,...){
     sct_data<-mclapply(filter_data, function(x){
       SCTransform(
         x,
@@ -153,68 +154,38 @@ scrna_step<-function(){
         vars.to.regress = c("MT_percent","HB_percent"),
         conserve.memory = TRUE
       )
-    })
+    },mc.cores = cores)
     gc()
 
-    sct_data <- merge(sct_data[[1]], y = sct_data[-1])
-    sct_data <- FindVariableFeatures(sct_data, selection.method = "vst", nfeatures = nfeatures)
+    features <- SelectSCTIntegrationFeatures(
+      object.list = sct_data,
+      nfeatures = nfeatures
+    )
+
+    sct_data <- PrepSCTIntegration(
+      object.list = sct_data,
+      anchor.features = features
+    )
     gc()
 
-    sct_data <- RunPCA(sct_data, npcs = npcs)
+    anchors <- FindIntegrationAnchors(
+      object.list = sct_data,
+      normalization.method = "SCT",
+      anchor.features = features,
+      reduction = reduction
+    )
     gc()
 
-    sct_data <- RunHarmony(sct_data,group.by.vars = "orig.ident")
-    gc()
+    sct_data <- IntegrateData(
+      anchors,
+      normalization.method = "SCT"
+    )
+
     if (!is.null(Rfile)) {
       saveRDS(sct_data, file = Rfile)
     }
     print("normlization complete")
     return(sct_data)
-  }
-
-  sct_data_new_s6<-function(scRNAdata,all.gene=FALSE,Rfile=NULL,nfeatures=3000,reduction="rpca",workers = 3,future.seed=T,npcs=20,...){
-    plan(multisession, workers = workers)
-    options(future.globals.maxSize = 90 * 1024^3)
-
-    sct_data <- list()
-    for(i in seq_along(scRNAdata)) {
-      sct_data[[i]] <- SCTransform(scRNAdata[[i]],
-                                   method = "glmGamPoi",
-                                   return.only.var.genes = !all.gene,
-                                   vars.to.regress = c("MT_percent","HB_percent"),
-                                   conserve.memory = TRUE,...)
-    }
-
-    gc()
-    features <- SelectIntegrationFeatures(sct_data, nfeatures = nfeatures)
-    sct_data <- PrepSCTIntegration(sct_data, anchor.features = features)
-    if (reduction == "rpca") {
-      sct_data <- lapply(sct_data, RunPCA, features = features, verbose = FALSE, npcs = npcs)
-    }
-    anchors <- FindIntegrationAnchors(object.list = sct_data, normalization.method = "SCT",
-                                      anchor.features = features,reduction = reduction)
-    sct_data <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
-    if (!is.null(Rfile)) {
-      saveRDS(sct_data,file = Rfile)
-    }
-    print("normlization complete")
-
-    return(sct_data)
-  }
-
-
-  norm_data_s6<-function(scRNAdata,vars.to.regress=c('MT_percent',"HB_percent"),Rfile=NULL){
-
-    scRNAdata <- NormalizeData(scRNAdata)
-    scRNAdata <- FindVariableFeatures(scRNAdata,nFeature_RNA = nFeature_RNA)
-    scRNAdata <- ScaleData(scRNAdata,vars.to.regress = vars.to.regress)
-
-    if (!is.null(Rfile)) {
-      saveRDS(sct_data,file = Rfile)
-    }
-    print("normlization complete")
-
-    return(scRNAdata)
   }
 
   #pca
@@ -230,36 +201,22 @@ scrna_step<-function(){
     return(pca_data)
   }
 
-  #batch effect remove
-  batch_rm_s8<-function(scRNAdata,Rfile=NULL){
-    batchrm_data <- IntegrateLayers(object = scRNAdata,
-                                 method = HarmonyIntegration,  # Method can be changed as needed
-                                 orig.reduction = 'pca',  # Must use PCA here
-                                 new.reduction = 'harmony')
-    pca_deviation <- ElbowPlot(batchrm_data, ndims = 50)
-    print(pca_deviation)
-
-    if (!is.null(Rfile)) {
-      saveRDS(batchrm_data,file = Rfile)
-    }
-    print("remove batch effect complete")
-
-    return(batchrm_data)
-  }
 
   #reduction
-  umap_reduction_s9<-function(scRNAdata,n.dims=20,assay="SCT",reduction=c("pca","harmony"),n.neighbors = 30L,n.components = 3L,Rfile=NULL,...){
-    #if resolution_start length >1 then use old method to clustree, otherwise use findclustersrecall
-    DefaultAssay(scRNAdata) <- "integrated"
-    scRNAdata <- FindNeighbors(scRNAdata,reduction = reduction,dims = 1:n.dims)
-    scRNAdata <- RunUMAP(scRNAdata,dims = 1:n.dims,reduction = reduction,n.neighbors=n.neighbors,n.components=n.components,...)
-    scRNAdata <- RunTSNE(scRNAdata,dims = 1:n.dims,reduction = reduction,n.neighbors=n.neighbors,n.components=n.components,...)
+  umap_reduction_s9<-function (scRNAdata, n.dims = 20, assay = "SCT", reduction = c("pca", "harmony"), learning_rate_tsne = 200,n_iter_tsne = 1000,perplexity_tsne = 30,
+                               n.neighbors_umap = 30L, n.components = 3L, min.dist_umap = 0.3,Rfile = NULL,
+                               ...)
+  {
+    scRNAdata <- RunUMAP(scRNAdata, dims = 1:n.dims, reduction = reduction, min.dist = min.dist_umap,
+                         n.neighbors = n.neighbors_umap, n.components = n.components,
+                         ...)
+    scRNAdata <- RunTSNE(scRNAdata, dims = 1:n.dims, reduction = reduction, learning_rate = learning_rate_tsne,n_iter = n_iter_tsne,
+                         dim.embed=n.components, perplexity = perplexity_tsne,
+                         ...)
     print("Reduction complete")
-
     if (!is.null(Rfile)) {
-      saveRDS(scRNAdata,file = Rfile)
+      saveRDS(scRNAdata, file = Rfile)
     }
-
     return(scRNAdata)
   }
 
@@ -268,13 +225,18 @@ scrna_step<-function(){
     print(paste("dims: ",n.dims))
     print(paste("resolution: ",resolution))
 
-    if (clustermethod=="normal") {
-      reduct_data <- FindClusters(scRNAdata,resolution = resolution)
-      if (length(resolution)>1) {
+    scRNAdata <- FindNeighbors(scRNAdata, reduction = reduction, dims = 1:n.dims)
+
+    if (clustermethod == "normal") {
+      reduct_data <- FindClusters(scRNAdata, resolution = resolution)
+      if (length(resolution) > 1) {
         clustree(reduct_data)
       }
-    } else if (clustermethod=="recall"){
-      reduct_data <- FindClustersRecall(scRNAdata,dims = 1:ndims,resolution_start = resolution,algorithm = "louvain",assay = "SCT",cores=core)
+    }
+    else if (clustermethod == "recall") {
+      reduct_data <- FindClustersRecall(scRNAdata, dims = 1:ndims,
+                                        resolution_start = resolution, algorithm = "louvain",
+                                        assay = "SCT", cores = core)
     }
 
     if (!is.null(Rfile)) {
@@ -285,7 +247,8 @@ scrna_step<-function(){
   }
 
   #reduction plot
-  clust_plot_s10<-function(scRNAdata,...){
+  clust_plot_s10<-function(scRNAdata,ident="seurat_clusters",...){
+    Idents(scRNAdata)<-ident
     umap_integrated_1 <- DimPlot(scRNAdata,reduction = 'umap',group.by = 'orig.ident')
     umap_integrated_2 <- DimPlot(scRNAdata,reduction = 'tsne', label = T,...)
     umap_integrated_3 <- DimPlot(scRNAdata,reduction = 'umap', label = T,...)
