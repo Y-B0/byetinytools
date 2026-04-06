@@ -19,14 +19,16 @@ scrna_step<-function(){
   }
 
   #file read in
-  file_read_s2<-function(path,specise="human",min.cells=3,min.features=200,Rfile=NULL,h5=F,...){
+  file_read_s2<-function(path,dir_name=NULL,specise="human",min.cells=3,min.features=200,Rfile=NULL,h5=F,...){
 
     ##default the input path contain multi sample folder, each sample folder have named accordant with sample info file, every sample folder contain the three basic files,
 
-    if (h5==T) {
-      dir_name <<- list.files(path,pattern = "*.h5*",recursive = T,full.names = F)
-    }else{
-      dir_name <<- list.dirs(path,recursive = F)
+    if (is.null(dir_name)) {
+      if (h5==T) {
+        dir_name <<- list.files(path,pattern = "*.h5*",recursive = T,full.names = F)
+      }else{
+        dir_name <<- list.dirs(path,recursive = F)
+      }
     }
 
     scRNAlist <- list()
@@ -102,15 +104,18 @@ scrna_step<-function(){
     if (specfic_gene==T) {
 
       if(specise=="human"){
-        MT_gene <- "MT-"
+        MT_gene <- "^MT-"
         HB_gene <- c("HBA1|HBA2|HBB|HBD|HBE1|HBG1|HBG2|HBM|HBQ1|HBZ")
+        RP_gene <- c("^RPl","^RPS")
       } else if(specise=="mouse"){
-        MT_gene <- "mt-"
+        MT_gene <- "^mt-"
         HB_gene <- c("Hba1|Hba2|Hbb|Hbd|Hbe1|Hbg1|Hbg2|Hbm|Hbq1|Hbz")
+        RP_gene <- c("^Rpl","^Rps")
       }
 
       filter_data <- lapply(filter_data, function(x) {
-        x<-subset(x, features = setdiff(rownames(x), c(other_specific,HB_gene,grep("^MT-",rownames(x),value = T))))
+        x<-subset(x, features = setdiff(rownames(x),
+                                        grep(paste(c(MT_gene,other_specific,RP_gene,HB_gene),collapse = "|",sep = "|"),rownames(x),value = T)))
         expr_genes <- rowSums(as.matrix(x[["RNA"]]$counts) > 0) / ncol(x) > innergene_rate
         x <- x[expr_genes, ]
         x
@@ -144,47 +149,81 @@ scrna_step<-function(){
   }
 
   #SCT normlizeation and intergrate and batch remove
-  sct_data_s6<-function(scRNAdata, all.gene = FALSE,cores=1 , Rfile = NULL, nfeatures = 3000,
-                        reduction = c("cca", "rpca", "jpca", "rlsi"), future.seed = T, k.weight = 100,...){
-    sct_data<-mclapply(filter_data, function(x){
+  sct_data_s6 <- function(
+    scRNAdata,
+    all.gene = FALSE,
+    cores = 1,
+    Rfile = NULL,
+    nfeatures = 3000,
+    reduction = "cca",
+    future.seed = TRUE,
+    k.weight = 100,
+    sct_integrate = TRUE,
+    pca.dims = 50,
+    ...
+  ){
+
+    sct_data <- mclapply(scRNAdata, function(x){
       SCTransform(
         x,
         method = "glmGamPoi",
-        return.only.var.genes = T,
+        return.only.var.genes = TRUE,
         vars.to.regress = c("MT_percent","HB_percent"),
         conserve.memory = TRUE
       )
-    },mc.cores = cores)
+    }, mc.cores = cores)
+
     gc()
 
-    features <- SelectSCTIntegrationFeatures(
-      object.list = sct_data,
-      nfeatures = nfeatures
-    )
+    if (sct_integrate) {
 
-    sct_data <- PrepSCTIntegration(
-      object.list = sct_data,
-      anchor.features = features
-    )
-    gc()
+      features <- SelectSCTIntegrationFeatures(object = sct_data,nfeatures = nfeatures)
 
-    anchors <- FindIntegrationAnchors(
-      object.list = sct_data,
-      normalization.method = "SCT",
-      anchor.features = features,
-      reduction = reduction
-    )
-    gc()
+      sct_data <- PrepSCTIntegration(
+        object.list = sct_data,
+        anchor.features = features
+      )
 
-    sct_data <- IntegrateData(
-      anchors,
-      normalization.method = "SCT"
-    )
+      gc()
+
+      anchors <- FindIntegrationAnchors(
+        object.list = sct_data,
+        normalization.method = "SCT",
+        anchor.features = features,
+        reduction = reduction
+      )
+
+      gc()
+
+      sct_data <- IntegrateData(
+        anchors,
+        normalization.method = "SCT"
+      )
+
+      sct_data<-RunPCA(sct_data,npcs=pca.dims,features = features)
+    }
+
+    else {
+
+      features <- SelectIntegrationFeatures(
+        object.list = sct_data,
+        nfeatures = nfeatures
+      )
+
+        sct_data <- merge(
+          x = sct_data[[1]],
+          y = sct_data[-1]
+        )
+      sct_data<-RunPCA(sct_data,npcs=pca.dims,features = features)
+    }
+
 
     if (!is.null(Rfile)) {
       saveRDS(sct_data, file = Rfile)
     }
-    print("normlization complete")
+
+    print("normalization complete")
+
     return(sct_data)
   }
 
@@ -203,14 +242,18 @@ scrna_step<-function(){
 
 
   #reduction
-  umap_reduction_s9<-function (scRNAdata, n.dims = 20, assay = "SCT", reduction = c("pca", "harmony"), learning_rate_tsne = 200,n_iter_tsne = 1000,perplexity_tsne = 30,
-                               n.neighbors_umap = 30L, n.components = 3L, min.dist_umap = 0.3,Rfile = NULL,
+  umap_reduction_s9<-function (scRNAdata, n.dims = 20, assay = "SCT", reduction = c("pca", "harmony","rpca"), perplexity_tsne = 30,
+                               n.neighbors_umap = 30L, min.dist_umap = 0.3,sprea_umap=1,Rfile = NULL, n.components = 3,seed.use=1234,
                                ...)
   {
+
+    #增加高变基因数目会把细胞类型分开。PCA维数的增加分出亚群
+    #n_neighbors，min_dist和dims不影响细胞的本质属性的，只影响UMAP可视化的图。减小的min_dist和增加的dims会把细胞分开。n_neighbors确定整体，min_dist确定整体下局部紧密程度
+
     scRNAdata <- RunUMAP(scRNAdata, dims = 1:n.dims, reduction = reduction, min.dist = min.dist_umap,
-                         n.neighbors = n.neighbors_umap, n.components = n.components,
+                         n.neighbors = n.neighbors_umap, n.components = n.components,sprea_umap=sprea_umap,
                          ...)
-    scRNAdata <- RunTSNE(scRNAdata, dims = 1:n.dims, reduction = reduction, learning_rate = learning_rate_tsne,n_iter = n_iter_tsne,
+    scRNAdata <- RunTSNE(scRNAdata, dims = 1:n.dims, reduction = reduction,
                          dim.embed=n.components, perplexity = perplexity_tsne,
                          ...)
     print("Reduction complete")
@@ -220,7 +263,7 @@ scrna_step<-function(){
     return(scRNAdata)
   }
 
-  umap_cluster_s10<-function(scRNAdata,n.dims=20,resolution,clustermethod=c("normal","recall"),assay="SCT",reduction=c("pca","harmony"),Rfile=NULL,algorithm = "louvain",core=4,...){
+  umap_cluster_s10<-function(scRNAdata,n.dims=20,resolution,clustermethod=c("normal","recall"),assay="SCT",reduction=c("pca","harmony","rpca"),Rfile=NULL,algorithm = "louvain",core=4,...){
     #if resolution_start length >1 then use old method to clustree, otherwise use findclustersrecall
     print(paste("dims: ",n.dims))
     print(paste("resolution: ",resolution))
@@ -248,18 +291,20 @@ scrna_step<-function(){
 
   #reduction plot
   clust_plot_s10<-function(scRNAdata,ident="seurat_clusters",...){
-    Idents(scRNAdata)<-ident
     umap_integrated_1 <- DimPlot(scRNAdata,reduction = 'umap',group.by = 'orig.ident')
-    umap_integrated_2 <- DimPlot(scRNAdata,reduction = 'tsne', label = T,...)
-    umap_integrated_3 <- DimPlot(scRNAdata,reduction = 'umap', label = T,...)
-    umap_integrated_4 <- DimPlot(scRNAdata,reduction = 'pca', label = T,...)
+    umap_integrated_2 <- DimPlot(scRNAdata,reduction = 'tsne', label = T,group.by = ident,...)
+    umap_integrated_3 <- DimPlot(scRNAdata,reduction = 'umap', label = T,group.by = ident...)
+    umap_integrated_4 <- DimPlot(scRNAdata,reduction = 'pca', label = T,group.by = ident...)
     integrated_plot <- list(batch_check=umap_integrated_1,pca=umap_integrated_4,tsne=umap_integrated_2,umap=umap_integrated_3)
     return(integrated_plot)
   }
 
   #find markers
-  marker_find_s11<-function(scRNAdata,node=4,only.pos = T,assay = "SCT",slot="scale.data",test.use = "wilcox",Rfile=NULL,...){
+  marker_find_s11<-function(scRNAdata,prepsct=T,node=4,only.pos = T,assay = "SCT",slot="scale.data",test.use = "wilcox",Rfile=NULL,...){
 
+    if(prepsct==T){
+      scRNAdata<-PrepSCTFindMarkers(scRNAdata)
+    }
     if (node>1) {
       options(future.globals.maxSize = node * 1024^2)
       plan("multisession", workers = node)
@@ -268,6 +313,7 @@ scrna_step<-function(){
     } else {
       all.markers <- FindAllMarkers(scRNAdata,only.pos = only.pos,assay = assay,slot=slot,test.use = test.use,...)
     }
+    all.markers$cell_de <- all.markers$pct.1-all.markers$pct.2
     gc()
     if (!is.null(Rfile)) {
       saveRDS(all.markers,file = Rfile)
@@ -316,6 +362,6 @@ scrna_step<-function(){
 
 
   return(list(env_load_s1=env_load_s1,file_read_s2=file_read_s2,feature_show_s3=feature_show_s3,cell_filter_s4=cell_filter_s4,merge_data_s5=merge_data_s5,
-              sct_data_s6=sct_data_s6,norm_data_s6=norm_data_s6,sct_data_new_s6=sct_data_new_s6,pca_reduction_s7=pca_reduction_s7,batch_rm_s8=batch_rm_s8,umap_reduction_s9=umap_reduction_s9,umap_cluster_s10=umap_cluster_s10,clust_plot_s10=clust_plot_s10,
+              sct_data_s6=sct_data_s6,pca_reduction_s7=pca_reduction_s7,umap_reduction_s9=umap_reduction_s9,umap_cluster_s10=umap_cluster_s10,clust_plot_s10=clust_plot_s10,
               marker_find_s11=marker_find_s11,cluster_anno_s12=cluster_anno_s12))
 }
