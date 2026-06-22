@@ -177,7 +177,7 @@ scrna_step<-function(){
 
     if (sct_integrate) {
 
-      features <- SelectSCTIntegrationFeatures(object = sct_data,nfeatures = nfeatures)
+      features <- SelectIntegrationFeatures(object = sct_data,nfeatures = nfeatures)
 
       sct_data <- PrepSCTIntegration(
         object.list = sct_data,
@@ -242,20 +242,31 @@ scrna_step<-function(){
 
 
   #reduction
-  umap_reduction_s9<-function (scRNAdata, n.dims = 20, assay = "SCT", reduction = c("pca", "harmony","rpca"), perplexity_tsne = 30,
+  umap_reduction_s9<-function (scRNAdata, n.dims = 20,clusterway=c("umap","tsne","all"), assay = "SCT", reduction = c("pca", "harmony","rpca"), perplexity_tsne = 30,
                                n.neighbors_umap = 30L, min.dist_umap = 0.3,sprea_umap=1,Rfile = NULL, n.components = 3,seed.use=1234,
                                ...)
   {
 
     #增加高变基因数目会把细胞类型分开。PCA维数的增加分出亚群
     #n_neighbors，min_dist和dims不影响细胞的本质属性的，只影响UMAP可视化的图。减小的min_dist和增加的dims会把细胞分开。n_neighbors确定整体，min_dist确定整体下局部紧密程度
+    if (clusterway == "umap") {
 
-    scRNAdata <- RunUMAP(scRNAdata, dims = 1:n.dims, reduction = reduction, min.dist = min.dist_umap,
-                         n.neighbors = n.neighbors_umap, n.components = n.components,sprea_umap=sprea_umap,
-                         ...)
-    scRNAdata <- RunTSNE(scRNAdata, dims = 1:n.dims, reduction = reduction,
-                         dim.embed=n.components, perplexity = perplexity_tsne,
-                         ...)
+      scRNAdata <- RunUMAP(scRNAdata,dims = 1:n.dims,reduction = reduction,
+                           min.dist = min.dist_umap,n.neighbors = n.neighbors_umap,n.components = n.components,spread = spread_umap,...)
+
+    } else if (clusterway == "tsne") {
+
+      scRNAdata <- RunTSNE(scRNAdata,dims = 1:n.dims,reduction = reduction,dim.embed = n.components,perplexity = perplexity_tsne,...)
+
+    } else {
+
+      scRNAdata <- RunUMAP(scRNAdata,dims = 1:n.dims,reduction = reduction,
+                           min.dist = min.dist_umap,n.neighbors = n.neighbors_umap,n.components = n.components,spread = spread_umap,...)
+
+      scRNAdata <- RunTSNE(scRNAdata,dims = 1:n.dims,reduction = reduction,dim.embed = n.components,perplexity = perplexity_tsne,...)
+    }
+
+
     print("Reduction complete")
     if (!is.null(Rfile)) {
       saveRDS(scRNAdata, file = Rfile)

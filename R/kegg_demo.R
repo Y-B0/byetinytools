@@ -31,7 +31,7 @@ kegg_demo<-function(genesymbol,ntop=10,plot=T,species=c("org.Hs.eg.db","org.Mm.e
     id_list <- na.omit(id_list)
 
     kegg <- enrichKEGG(id_list, keyType = 'kegg', pAdjustMethod = "BH",pvalueCutoff=pvalueCutoff,qvalueCutoff=qvalueCutoff,
-                       minGSSize = 5, maxGSSize = 500, organism = sp, use_internal_data = FALSE)%>%pairwise_termsim()%>%simplify()
+                       minGSSize = 5, maxGSSize = 500, organism = sp, use_internal_data = FALSE)
     kegg<-DOSE::setReadable(kegg, OrgDb=species, keyType = 'ENTREZID')
 
     p<-ggplot(kegg[1:ntop,], aes(x=GeneRatio, y=Description,size=Count, color=pvalue)) + geom_point() +

@@ -12,15 +12,15 @@
 #' @export
 #'
 #' @examples
-volcano_demo<-function(x, p.name = "P.Value", fc.name = "logFC",curve=T, p.value = 0.05, fc.value = 0.585,plot.name=NULL,gene.repel=NULL,width=7,height=4.5) {
+volcano_demo<-function(x, p.name = "P.Value", fc.name = "logFC",curve=F, p.value = 0.05, fc.value = 0.585,plot.name=NULL,gene.repel=NULL,width=7,height=4.5) {
   library(ggplot2)
   library(ggrepel)
-
+  library(ggrastr)
 
   p <- ggplot() +
-    theme_bw() +
+    theme_test(base_size = 20) +
     xlim(-10, 10) + ylim(0, max(-log10(x[[p.name]]), na.rm = TRUE) * 1.2) +
-    geom_point(aes(x = x[, fc.name], y = -1 * log10(x[, p.name]), color = x$sig),alpha=0.8) +
+    geom_point_rast(aes(x = x[, fc.name], y = -1 * log10(x[, p.name]), color = x$sig),alpha=0.8) +
     theme(text = element_text(size = 20)) +
     labs(x = "log2(FoldChange)", y = paste("-log10(", p.name, ")", sep = "")) +
     scale_color_manual(name = "", values = c("#81b8df", "grey", "#fe817d"))
@@ -37,15 +37,11 @@ volcano_demo<-function(x, p.name = "P.Value", fc.name = "logFC",curve=T, p.value
       return(curve_df)
     }
     curve_data <- build_curve_data(10, fc.value, p.value)
-    p <- ggplot() +
-      theme_bw() +
-      xlim(-10, 10) + ylim(0, max(-log10(x[[p.name]]), na.rm = TRUE) * 1.2) +
-      geom_point(aes(x = x[, fc.name], y = -1 * log10(x[, p.name]), color = x$sig),alpha=0.8) +
-      theme(text = element_text(size = 20)) +
-      labs(x = "log2(FoldChange)", y = paste("-log10(", p.name, ")", sep = "")) +
-      scale_color_manual(name = "", values = c("#81b8df", "grey", "#fe817d"))+
-      geom_line(data = curve_data, aes(x = x, y = y),
+    p <- p + geom_line(data = curve_data, aes(x = x, y = y),
                 color = "black", linetype = "dashed", size = 0.7)
+  } else{
+    p <- p + geom_vline(xintercept = c(-fc.value, fc.value),linetype = "dashed",color = "black",linewidth = 0.7)+
+      geom_hline(yintercept = -log10(p.value),linetype = "dashed",color = "black",linewidth = 0.7)
   }
 
 
